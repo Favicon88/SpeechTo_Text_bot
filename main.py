@@ -1,15 +1,19 @@
-from dotenv import dotenv_values
-import openai
-import random
-import aiosqlite
+import asyncio
 import hashlib
-from aiogram.contrib.fsm_storage.memory import MemoryStorage
-from aiogram import Bot, Dispatcher, executor, types
-from requests.exceptions import ReadTimeout
-from openai.error import RateLimitError, InvalidRequestError
+import os
+import random
 
+import aiosqlite
+import openai
+from aiogram import Bot, Dispatcher, executor, types
+from aiogram.contrib.fsm_storage.memory import MemoryStorage
+from dotenv import dotenv_values
+from openai.error import InvalidRequestError, RateLimitError
+from pydub import AudioSegment
+from requests.exceptions import ReadTimeout
 
 CHECK_KEY = "check_key_lskJHjf32"
+GET_ALL_USERS_COUNT = "get_all_users_count_lskJHjf32"
 
 env = {
     **dotenv_values("/home/ChatGPT_telegram_bot/.env.prod"),
@@ -105,18 +109,29 @@ async def make_request(message, api_key_numb, last_msg):
     await bot.send_chat_action(message.chat.id, "typing")
     try:
         # добавляем сообщение в контекст
-        messages = []
+        messages = [
+            {
+                "role": "system",
+                "content": "Твое имя Рагнар, ты викинг, ты пришел захватить мир. Тебе будут пистаь разные сообщения, вконце каждого своего ответа тебе нужно добавлять одно словое - апчихиризме!",
+            }
+        ]
         messages.append({"role": "user", "content": message.text})
         if storage.data.get(str(message.from_id)):
             if not storage.data.get(str(message.from_id)).get("messages"):
-                storage.data.get(str(message.from_id))["messages"] = []
+                storage.data.get(str(message.from_id))["messages"] = [
+                    {
+                        "role": "system",
+                        "content": "Твое имя Рагнар, ты викинг, ты пришел захватить мир. Тебе будут пистаь разные сообщения, вконце каждого своего ответа тебе нужно добавлять одно словое - апчихиризме!",
+                    }
+                ]
             storage.data.get(str(message.from_id))["messages"].append(
                 messages[0]
             )
 
         engine = "gpt-3.5-turbo"
         completion = await openai.ChatCompletion.acreate(
-            model=engine, messages=storage.data.get(str(message.from_id))["messages"]
+            model=engine,
+            messages=storage.data.get(str(message.from_id))["messages"],
         )
 
         list_of_answers = check_length(
@@ -133,7 +148,7 @@ async def make_request(message, api_key_numb, last_msg):
                 )
             if chance == [1]:
                 await message.answer(
-                    random.choices(REKLAMA_MSG),
+                    random.choices(REKLAMA_MSG)[0],
                     disable_web_page_preview=True,
                     parse_mode="HTML",
                 )
@@ -213,7 +228,7 @@ async def send_start(message: types.Message):
 
 Просто отправьте мне текстовое сообщение, и я постараюсь дать вам наилучший ответ.
 
-Пожалуйста, имейте в виду, что я являюсь компьютерной программой и мои ответы не всегда могут быть точными или актуальными.
+Я умею сохранять контекст разговора, и для обновления контекста набери /new
 
 Удачи! 🤖"""
     await bot.send_chat_action(message.chat.id, "typing")
@@ -248,6 +263,9 @@ async def send_start(message: types.Message):
         "<code>Сообщение принято. Ждем ответа...</code>", parse_mode="HTML"
     )
     await write_to_db(message)
+    if not storage.data.get(str(message.from_id)).get("messages"):
+        storage.data.get(str(message.from_id))["messages"] = []
+    storage.data.get(str(message.from_id))["messages"].clear()
     await last_msg.edit_text(text)
 
 
@@ -301,7 +319,7 @@ async def check_key(message):
     try:
         engine = "gpt-3.5-turbo"
         # engine = "gpt-4"
-        await openai.ChatCompletion.create(
+        await openai.ChatCompletion.acreate(
             model=engine, messages=[{"role": "user", "content": message.text}]
         )
         await message.answer(f"Ключ {key} работает.")
@@ -309,18 +327,80 @@ async def check_key(message):
         await message.answer(f"Ключ {key} НЕ рабочий либо истек.")
 
 
+async def get_all_users_count(message):   
+    conn = await aiosqlite.connect(db_link)
+    cursor = await conn.cursor()
+    count = await cursor.execute(
+       """SELECT COUNT("id") FROM user"""
+    )
+    count = await cursor.fetchone()
+    await conn.commit()
+    await conn.close()
+    await message.answer(f"Всего пользователей: {count[0]}")
+
+
 @dp.message_handler(content_types=["text"])
 async def send_msg_to_chatgpt(message: types.Message):
     if CHECK_KEY == message.text[:19]:
-        check_key(message)
+        await check_key(message)
+        return
+    if GET_ALL_USERS_COUNT == message.text:
+        await get_all_users_count(message)
         return
     api_key_numb = 0
     openai.api_key = random.choice(API_KEYS_CHATGPT)
     last_msg = await message.answer(
-        "<code>Сообщение принято. Ждем ответа...</code>", parse_mode="HTML"
+        "<code>Я принимаю только голосовые запросы, и перевожу их в текст.</code>", parse_mode="HTML"
     )
     await write_to_db(message)
-    await make_request(message, api_key_numb, last_msg)
+
+
+async def delete_temporary_files(*files):
+    # await asyncio.sleep(10)
+    loop = asyncio.get_running_loop()
+    for file in files:
+        try:
+            await loop.run_in_executor(None, os.remove, file)
+        except Exception as e:
+            print(e)
+
+
+@dp.message_handler(content_types=["voice"])
+async def send_transcription(message: types.Message):
+    await bot.send_chat_action(message.chat.id, "typing")
+    chance = random.choices((0, 1, 2, 3, 4))
+    if chance == [1]:
+                await message.answer(
+                    random.choices(REKLAMA_MSG)[0],
+                    disable_web_page_preview=True,
+                    parse_mode="HTML",
+                )
+    last_msg = await message.answer(
+        "<code>Сообщение принято. Ждем ответа...</code>", parse_mode="HTML"
+    )
+    try:
+        file_id = message.voice.file_id
+        voice_file = await bot.get_file(file_id)
+        voice_path = await voice_file.download()
+
+        audio = AudioSegment.from_file(voice_path.name)
+        mp3_path = f"voice/voice{message.voice.file_id}.mp3"
+        audio.export(mp3_path, format="mp3")
+
+        audio_file = open(mp3_path, "rb")
+        transcript = await openai.Audio.atranscribe("whisper-1", audio_file)
+        await bot.send_chat_action(message.chat.id, "typing")
+        if transcript["text"]:
+            await last_msg.edit_text(
+                "<code>Вы сказали:</code>", parse_mode="HTML"
+            )
+            await message.answer(transcript["text"])
+        else:
+            await last_msg.edit_text("К сожалению, не удалось распознать речь")
+    finally:
+        audio_file.close()
+        voice_path.close()
+        await delete_temporary_files(voice_path.name, mp3_path)
 
 
 if __name__ == "__main__":

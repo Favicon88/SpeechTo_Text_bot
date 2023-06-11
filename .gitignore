@@ -1,5 +1,6 @@
-
-
+ya_private_key.txt
+authorized_key.json
+voice/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
