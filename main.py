@@ -219,7 +219,7 @@ async def create_table():
 
 @dp.message_handler(commands=["start"])
 async def send_start(message: types.Message):
-    await create_table()
+    # await create_table()
     text = """Приветствую ✌
 
 Я - ChatGPT, крупнейшая языковая модель, созданная OpenAI. 
@@ -255,18 +255,18 @@ async def send_start(message: types.Message):
     await last_msg.edit_text(text)
 
 
-@dp.message_handler(commands=["new"])
-async def send_start(message: types.Message):
-    text = """Контекст очищен"""
-    await bot.send_chat_action(message.chat.id, "typing")
-    last_msg = await message.answer(
-        "<code>Сообщение принято. Ждем ответа...</code>", parse_mode="HTML"
-    )
-    await write_to_db(message)
-    if not storage.data.get(str(message.from_id)).get("messages"):
-        storage.data.get(str(message.from_id))["messages"] = []
-    storage.data.get(str(message.from_id))["messages"].clear()
-    await last_msg.edit_text(text)
+# @dp.message_handler(commands=["new"])
+# async def send_start(message: types.Message):
+#     text = """Контекст очищен"""
+#     await bot.send_chat_action(message.chat.id, "typing")
+#     last_msg = await message.answer(
+#         "<code>Сообщение принято. Ждем ответа...</code>", parse_mode="HTML"
+#     )
+#     await write_to_db(message)
+#     if not storage.data.get(str(message.from_id)).get("messages"):
+#         storage.data.get(str(message.from_id))["messages"] = []
+#     storage.data.get(str(message.from_id))["messages"].clear()
+#     await last_msg.edit_text(text)
 
 
 def md5sign(m, oa, secretWord1, currency, o):
@@ -276,7 +276,7 @@ def md5sign(m, oa, secretWord1, currency, o):
 
 @dp.message_handler(commands=["donate"])
 async def send_donate(message: types.Message):
-    secretWord1 = "Jou^VC4buX_[1x?"
+    secretWord1 = env["secretWord1"]
     url = "https://pay.freekassa.ru/?"
 
     # m - ID Вашего магазина merchantId
