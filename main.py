@@ -243,8 +243,7 @@ async def send_start(message: types.Message):
 async def send_start(message: types.Message):
     text = """Приветствую ✌
 
-Введи запрос и я отвечу на него, постараюсь поддержать разговор, предоставить информацию.
-
+Скажите голосом свою речь и я переведу ее в текст.
 
 """
     await bot.send_chat_action(message.chat.id, "typing")
