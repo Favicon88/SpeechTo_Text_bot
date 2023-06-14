@@ -16,7 +16,7 @@ CHECK_KEY = "check_key_lskJHjf32"
 GET_ALL_USERS_COUNT = "get_all_users_count_lskJHjf32"
 
 env = {
-    **dotenv_values("/home/ChatGPT_telegram_bot/.env.prod"),
+    **dotenv_values("/home/speech_to_text/.env.prod"),
     **dotenv_values(".env.dev"),  # override
 }
 
