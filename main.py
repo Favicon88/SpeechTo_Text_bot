@@ -32,6 +32,8 @@ API_KEYS_CHATGPT = [
     env["API_KEY_CHATGPT_8"],
     env["API_KEY_CHATGPT_9"],
     env["API_KEY_CHATGPT_10"],
+    env["API_KEY_CHATGPT_11"],
+    env["API_KEY_CHATGPT_12"],
 ]
 
 bot = Bot(token=env["TG_BOT_TOKEN"])
